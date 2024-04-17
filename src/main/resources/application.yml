@@ -1,0 +1,18 @@
+spring:
+  rabbitmq:
+    queues:
+      - name: DocumentDispatchJob
+        request: true
+        response: false
+      - name: SwitchState
+        request: true
+        response: false
+      - name: EnrichData
+        request: true
+        response: true
+      - name: RenderJobs
+        request: true
+        response: true
+      - name: SendOutput
+        request: true
+        response: true

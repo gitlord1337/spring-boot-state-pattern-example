@@ -1,13 +1,14 @@
 services:
-  cassandra:
-    image: 'cassandra:latest'
+  mongodb:
+    image: 'mongo:7.0'
     environment:
-      - 'CASSANDRA_DC=dc1'
-      - 'CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch'
+      - 'MONGO_INITDB_DATABASE=mydatabase'
+      - 'MONGO_INITDB_ROOT_PASSWORD=secret'
+      - 'MONGO_INITDB_ROOT_USERNAME=root'
     ports:
-      - '9042'
+      - '27017'
   rabbitmq:
-    image: 'rabbitmq:latest'
+    image: 'rabbitmq:3.13'
     environment:
       - 'RABBITMQ_DEFAULT_PASS=secret'
       - 'RABBITMQ_DEFAULT_USER=myuser'
