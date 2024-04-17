@@ -30,6 +30,7 @@ import java.util.UUID;
 @Slf4j
 public class DocumentDispatchJobService {
     private static final String NEW_MESSAGE_RECEIVED = "new message received: {}";
+    private static final boolean SIMULATE_WAIT_TIME = true;
     private final DocumentDispatchJobRepository dispatchJobRepository;
     private final RabbitTemplate rabbitTemplate;
     private final DocumentDispatchJobRepository documentDispatchJobRepository;
@@ -43,8 +44,8 @@ public class DocumentDispatchJobService {
 
     /**
      * Entry Point
-     *
-     *
+     * <p>
+     * <p>
      * OPEN (First State),
      * ENRICH_DATA,
      * PROCESS_RENDER_JOBS,
@@ -126,6 +127,9 @@ public class DocumentDispatchJobService {
     public void receivedEnrichDataRequest(EnrichDataRequest enrichDataRequest) {
         try {
             log.info(NEW_MESSAGE_RECEIVED, enrichDataRequest);
+            if (SIMULATE_WAIT_TIME) {
+                Thread.sleep(randomBetween(500, 1000));
+            }
             EnrichDataResponse response = new EnrichDataResponse(enrichDataRequest.getDocumentDispatchJobId(), enrichDataRequest.getDocumentId(), "data1", "data2", "data3");
             rabbitTemplate.convertAndSend("eEnrichDataResponse", "rEnrichDataResponse", response);
         } catch (Exception e) {
@@ -189,6 +193,9 @@ public class DocumentDispatchJobService {
     public void receivedRenderDocumentRequest(RenderDocumentRequest renderDocumentRequest) {
         try {
             log.info(NEW_MESSAGE_RECEIVED, renderDocumentRequest);
+            if (SIMULATE_WAIT_TIME) {
+                Thread.sleep(randomBetween(500, 1000));
+            }
             RenderDocumentResponse response = new RenderDocumentResponse(renderDocumentRequest.isAttachment(), renderDocumentRequest.getDocumentDispatchJobId(), renderDocumentRequest.getDocumentId(), String.format("http://document.x/", UUID.randomUUID()));
             rabbitTemplate.convertAndSend("eRenderJobsResponse", "rRenderJobsResponse", response);
         } catch (Exception e) {
@@ -266,6 +273,9 @@ public class DocumentDispatchJobService {
         try {
             log.info(NEW_MESSAGE_RECEIVED, sendOutputRequest);
             SendOutputResponse sendOutputResponse = new SendOutputResponse(sendOutputRequest.getDocumentDispatchJobId(), sendOutputRequest.getDocumentId(), false, null);
+            if (SIMULATE_WAIT_TIME) {
+                Thread.sleep(randomBetween(500, 1000));
+            }
             rabbitTemplate.convertAndSend("eSendOutputResponse", "rSendOutputResponse", sendOutputResponse);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -306,6 +316,10 @@ public class DocumentDispatchJobService {
         } catch (Exception e) {
             handleStateError(State.SEND_OUTPUT, documentDispatchJobId, e);
         }
+    }
+
+    private int randomBetween(int min, int max) {
+        return (int) (Math.random() * (max - min) + min);
     }
 
     private void handleStateError(State state, String documentDispatchJobId, Exception e) {

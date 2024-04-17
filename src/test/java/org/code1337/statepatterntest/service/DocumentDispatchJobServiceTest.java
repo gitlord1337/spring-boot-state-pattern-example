@@ -33,12 +33,15 @@ class DocumentDispatchJobServiceTest {
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0").withExposedPorts(27017);
 
     @Container
-    static RabbitMQContainer rabbitMQContainer = new RabbitMQContainer("rabbitmq:3.13");
+    static RabbitMQContainer rabbitMQContainer = new RabbitMQContainer("rabbitmq:3.13.1-management");
 
     @DynamicPropertySource
-    static void mongoDbProperties(DynamicPropertyRegistry registry) {
+    static void mongoDbProperties(DynamicPropertyRegistry registry) throws InterruptedException {
         mongoDBContainer.start();
         rabbitMQContainer.start();
+
+        //rabbit mq management tool
+        logRabbitMqManagementUrl();
 
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("spring.rabbitmq.host", rabbitMQContainer::getHost);
@@ -47,8 +50,16 @@ class DocumentDispatchJobServiceTest {
         registry.add("spring.rabbitmq.password", rabbitMQContainer::getAdminPassword);
     }
 
+    private static void logRabbitMqManagementUrl() throws InterruptedException {
+        String host = rabbitMQContainer.getHost();
+        Integer port = rabbitMQContainer.getMappedPort(15672);
+        String managementUrl = "http://" + host + ":" + port;
+        log.info("open management url here... {} {}:{}", managementUrl, rabbitMQContainer.getAdminUsername(), rabbitMQContainer.getAdminPassword());
+        Thread.sleep(3000);
+    }
+
     @Test
-    void fullTest() {
+    void fullTest() throws InterruptedException {
         DocumentDispatchJob documentDispatchJob = new DocumentDispatchJob();
         documentDispatchJob.setAddress(prepareAddress());
         documentDispatchJob.setShippingChannel(ShippingChannel.EMAIL);
@@ -56,15 +67,19 @@ class DocumentDispatchJobServiceTest {
         document.getAttachments().add(prepareAttachment());
         documentDispatchJob.setDocument(document);
 
-        //simulate new queue item look at RabbitMQReceiverService
-        rabbitTemplate.convertAndSend("eDocumentDispatchJobRequest", "rDocumentDispatchJobRequest", documentDispatchJob);
-        log.info("sent 1 documentDispatchJob...");
+        //simulate new queue item look at DocumentDispatchJobService
+        int documentCount = 10;
+        for (int i = 0; i < documentCount; i++) {
+            rabbitTemplate.convertAndSend("eDocumentDispatchJobRequest", "rDocumentDispatchJobRequest", documentDispatchJob);
+            log.info("sent documentDispatchJob {}...", i);
+        }
 
         //wait a few seconds until all stages are processed
         await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> {
             List<DocumentDispatchJob> allDocumentDispatchJobs = documentDispatchJobService.findAllDocumentDispatchJobs();
-            Assertions.assertTrue(allDocumentDispatchJobs.get(0).getJobTracking().getFinished() != null && allDocumentDispatchJobs.get(0).getJobTracking().getFinished().isOk());
-            log.info(allDocumentDispatchJobs.get(0).getJobTracking().toString());
+            long finishedObjects = allDocumentDispatchJobs.stream().filter(ddj -> ddj.getJobTracking().getFinished() != null && ddj.getJobTracking().getFinished().isOk()).count();
+            Assertions.assertEquals(documentCount, finishedObjects);
+            log.info("all documents finished");
         });
     }
 
