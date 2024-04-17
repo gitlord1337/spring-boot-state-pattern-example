@@ -7,8 +7,12 @@ The primary goal is to simulate a document dispatching order with the following
 states: `open`, `enrich_data`, `process_render_jobs`, `send_output`, and `finished`.
 
 ## Getting Started
-
+ 
 The entry point for understanding the application is `DocumentDispatchJobServiceTest#fullTest()`.
+
+Or make shure to execute docker compose up with the docker-compose.yml file and execute the StatePatternTestApplication
+to fire some Objects.
+
 
 ## Prerequisites
 
